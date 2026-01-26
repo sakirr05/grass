@@ -2,7 +2,7 @@ MODULE_TOPDIR = ../..
 
 PGM = r.geomorphon
 
-LIBES = $(RASTERLIB) $(GISLIB) $(MATHLIB)
+LIBES = $(RASTERLIB) $(GISLIB) $(PARSONLIB) $(MATHLIB)
 DEPENDENCIES = $(RASTERDEP) $(GISDEP)
 
 include $(MODULE_TOPDIR)/include/Make/Module.make
