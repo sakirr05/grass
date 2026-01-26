@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <grass/gjson.h>
 #include "local_proto.h"
 
 #define JSON_MIN_INDENT 1
@@ -245,51 +246,157 @@ static const char *format_token_common(const struct token *t)
 }
 
 /*
- * In the functions below besides checking the indent value after the loop
- * make sure it never drops below the initial value within the loop, even if
- * it would bounce back later. Return 1 on no error.
+ * Build JSON using parson library.
+ * Return 1 on success, 0 on error.
  */
 static unsigned write_json(FILE *f)
 {
-    unsigned i, indent = JSON_MIN_INDENT;
+    unsigned i;
+    G_JSON_Value *root_value;
+    G_JSON_Object *root_object;
+    G_JSON_Object *object_stack[MAX_STACK_ELEMS];
+    unsigned stack_depth = 0;
+    G_JSON_Status status;
 
-    WRITE_VAL(f, "%s\n", "{");
+    if (overflow)
+        return 0;
+
+    /* Initialize root object */
+    root_value = G_json_value_init_object();
+    if (!root_value)
+        return 0;
+    root_object = G_json_object(root_value);
+    if (!root_object) {
+        G_json_value_free(root_value);
+        return 0;
+    }
+    object_stack[stack_depth++] = root_object;
+
+    /* Process tokens and build JSON structure */
     for (i = 0; i < size; i++) {
-        const char *val;
-
-        /* Add a comma unless there is no data tokens immediately after. */
-        const char *comma =
-            (i + 1 == size) || (i + 1 < size && token[i + 1].type == T_ESO)
-                ? ""
-                : ",";
+        G_JSON_Object *current_object = object_stack[stack_depth - 1];
+        G_JSON_Value *new_value = NULL;
+        G_JSON_Object *new_object = NULL;
 
         switch (token[i].type) {
         case T_SSO:
-            WRITE_INDENT(f, indent);
-            indent++;
-            WRITE_VAL(f, "\"%s\": {\n", token[i].key);
-            continue;
-        case T_ESO:
-            if (indent == JSON_MIN_INDENT)
+            /* Start of sub-object */
+            if (stack_depth >= MAX_STACK_ELEMS) {
+                G_json_value_free(root_value);
                 return 0;
-            indent--;
-            WRITE_INDENT(f, indent);
-            WRITE_VAL(f, "}%s\n", comma);
+            }
+            new_value = G_json_value_init_object();
+            if (!new_value) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            new_object = G_json_object(new_value);
+            if (!new_object) {
+                G_json_value_free(new_value);
+                G_json_value_free(root_value);
+                return 0;
+            }
+            status = G_json_object_set_value(current_object, token[i].key,
+                                             new_value);
+            if (status != G_JSONSuccess) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            object_stack[stack_depth++] = new_object;
             continue;
-        default:
-            val = quote_val(token[i].type, format_token_common(token + i));
+
+        case T_ESO:
+            /* End of sub-object */
+            if (stack_depth <= 1) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            stack_depth--;
+            continue;
+
+        case T_INT:
+            status = G_json_object_set_number(current_object, token[i].key,
+                                              (double)token[i].int_val);
+            if (status != G_JSONSuccess) {
+                G_json_value_free(root_value);
+                return 0;
+            }
             break;
-        }
-        if (!val)
+
+        case T_BLN:
+            status = G_json_object_set_boolean(current_object, token[i].key,
+                                               token[i].int_val);
+            if (status != G_JSONSuccess) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            break;
+
+        case T_DBL:
+            if (isnan(token[i].dbl_val)) {
+                status = G_json_object_set_null(current_object, token[i].key);
+            }
+            else {
+                status = G_json_object_set_number(current_object, token[i].key,
+                                                  token[i].dbl_val);
+            }
+            if (status != G_JSONSuccess) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            break;
+
+        case T_MTR:
+            if (isnan(token[i].dbl_val)) {
+                status = G_json_object_set_null(current_object, token[i].key);
+            }
+            else {
+                status = G_json_object_set_number(current_object, token[i].key,
+                                                  token[i].dbl_val);
+            }
+            if (status != G_JSONSuccess) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            break;
+
+        case T_STR:
+            status = G_json_object_set_string(current_object, token[i].key,
+                                              token[i].str_val);
+            if (status != G_JSONSuccess) {
+                G_json_value_free(root_value);
+                return 0;
+            }
+            break;
+
+        default:
+            G_json_value_free(root_value);
             return 0;
-        WRITE_INDENT(f, indent);
-        WRITE_VAL(f, "\"%s\": ", token[i].key);
-        WRITE_VAL(f, "%s", val);
-        WRITE_VAL(f, "%s\n", comma);
+        }
     }
-    if (indent != JSON_MIN_INDENT || overflow)
+
+    /* Verify stack is back to root */
+    if (stack_depth != 1) {
+        G_json_value_free(root_value);
         return 0;
-    WRITE_VAL(f, "%s\n", "}");
+    }
+
+    /* Serialize and write to file */
+    {
+        char *serialized_string = G_json_serialize_to_string_pretty(root_value);
+        if (!serialized_string) {
+            G_json_value_free(root_value);
+            return 0;
+        }
+        if (fprintf(f, "%s\n", serialized_string) < 0) {
+            G_json_free_serialized_string(serialized_string);
+            G_json_value_free(root_value);
+            return 0;
+        }
+        G_json_free_serialized_string(serialized_string);
+    }
+
+    G_json_value_free(root_value);
     return 1;
 }
 
