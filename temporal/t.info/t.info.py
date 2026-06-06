@@ -37,7 +37,8 @@
 
 # %flag
 # % key: g
-# % description: Print in shell script style
+# % description: This flag is deprecated and will be removed in a future release. Use format=shell instead.
+# % label: Print in shell script style (deprecated)
 # %end
 
 # %flag
@@ -66,6 +67,14 @@ def main():
     shellstyle = flags["g"]
     system = flags["d"]
     history = flags["h"]
+
+    if shellstyle:
+        gs.warning(
+            _(
+                "Flag 'g' is deprecated and will be removed in a future "
+                "release. Please use format=shell instead."
+            )
+        )
 
     # Make sure the temporal database exists
     tgis.init()
