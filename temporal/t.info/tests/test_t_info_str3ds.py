@@ -1,9 +1,13 @@
+<<<<<<< HEAD
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Test t.info with space time 3D raster datasets and 3D raster maps
 
 The expected values capture the output of t.info as it is now, so that later
 changes to the interface can be checked against the established behavior.
 """
+=======
+"""Test t.info functionality with raster3D data."""
+>>>>>>> 0140fa73c4 (fix title)
 
 import grass.script as gs
 from grass.tools import Tools

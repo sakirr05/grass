@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Test t.info with space time raster datasets and raster maps
 
@@ -6,6 +7,9 @@ changes to the interface can be checked against the established behavior.
 """
 
 import pytest
+=======
+"""Test t.info functionality with raster data."""
+>>>>>>> 0140fa73c4 (fix title)
 
 import grass.script as gs
 from grass.tools import Tools
