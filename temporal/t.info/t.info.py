@@ -71,7 +71,7 @@ def main():
     system = flags["d"]
     history = flags["h"]
 
-    if shellstyle:
+    if flags["g"]:
         gs.warning(
             _(
                 "Flag 'g' is deprecated and will be removed in a future "
