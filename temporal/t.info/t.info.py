@@ -65,11 +65,13 @@ def main():
     from grass.temporal.utils import TemporalJSONEncoder
 
     name = options["input"]
-    type_ = options["type"]
+    stds_type = options["type"]
     format_ = options["format"]
     shellstyle = flags["g"] or format_ == "shell"
     system = flags["d"]
     history = flags["h"]
+
+    mapset = name.split("@", 1)[1] if "@" in name else None
 
     if flags["g"]:
         gs.warning(
@@ -88,9 +90,17 @@ def main():
         )
 
     # Make sure the temporal database exists
-    tgis.init()
+    tgis.init(skip_db_init=True)
 
-    dbif, connection_state_changed = tgis.init_dbif(None)
+    dbif, connection_state_changed = tgis.init_dbif(mapsets=mapset)
+
+    if not dbif.tgis_mapsets:
+        msg = _("No temporal database found in available mapsets.")
+        if mapset:
+            msg = _(
+                "No temporal database found in requested mapset <%s>."
+            ) % mapset
+        gs.fatal(msg)
 
     rows = tgis.get_tgis_metadata(dbif)
 
@@ -125,20 +135,19 @@ def main():
     if not system and not name:
         gs.fatal(_("Please specify %s=") % ("name"))
 
-    id_ = name if "@" in name else f"{name}@{gs.gisenv()['MAPSET']}"
-    dataset = tgis.dataset_factory(type_, id_)
+    dataset = tgis.open_old_stds(name, stds_type, dbif=dbif)
 
     if not dataset.is_in_db(dbif):
         gs.fatal(
             _("Dataset <{n}> of type <{t}> not found in temporal database").format(
-                n=id_,
-                t=type_,
+                n=name,
+                t=stds_type,
             ),
         )
 
     dataset.select(dbif)
 
-    if history and type_ in {"strds", "stvds", "str3ds"} and format_ != "json":
+    if history and stds_type in {"strds", "stvds", "str3ds"} and format_ != "json":
         dataset.print_history()
         return
 
