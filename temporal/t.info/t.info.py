@@ -92,7 +92,7 @@ def main():
     # Make sure the temporal database exists
     tgis.init(skip_db_init=True)
 
-    dbif, connection_state_changed = tgis.init_dbif(mapsets=mapset)
+    dbif = tgis.SQLDatabaseInterfaceConnection(mapsets=mapset)
 
     if not dbif.tgis_mapsets:
         msg = _("No temporal database found in available mapsets.")
