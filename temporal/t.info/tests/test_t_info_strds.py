@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Test t.info with space time raster datasets and raster maps
 
@@ -7,9 +6,6 @@ changes to the interface can be checked against the established behavior.
 """
 
 import pytest
-=======
-"""Test t.info functionality with raster data."""
->>>>>>> 0140fa73c4 (fix title)
 
 import grass.script as gs
 from grass.tools import Tools
@@ -331,8 +327,8 @@ def test_json_format_returns_valid_json(temporal_data):
         "number_of_maps": 3,
         "title": "A test",
         "description": "A test",
-        "start_time": "2001-01-01T00:00:00",
-        "end_time": "2001-04-01T00:00:00",
+        "start_time": "2001-01-01 00:00:00",
+        "end_time": "2001-04-01 00:00:00",
         "map_time": "interval",
         "nsres_min": 10,
         "nsres_max": 10,
@@ -416,8 +412,6 @@ def test_json_format_vs_shell(temporal_data):
     # Both should produce the same output
     for dict_key, dict_val in shell_dict.items():
         sanitized_value = dict_val.strip("'")
-        if dict_key in {"start_time", "end_time"}:
-            sanitized_value = sanitized_value.replace(" ", "T")
         assert dict_key in json_dict
         assert str(json_dict[dict_key]) == sanitized_value
 
@@ -430,9 +424,9 @@ def test_plain_format_still_works(temporal_data):
     assert "precip_abs1" in info
 
 
-def test_t_info_dh_flags(space_time_raster_dataset):
+def test_t_info_dh_flags(temporal_data):
     """Flags -d and -h work and are included in JSON."""
-    mapset, session = space_time_raster_dataset
+    mapset, session = temporal_data.mapset, temporal_data.session
     strds_id = f"precip_abs1@{mapset}"
     tools = Tools(session=session)
     json_info = tools.t_info(format="json", type="strds", input=strds_id).json
@@ -450,14 +444,14 @@ def test_t_info_dh_flags(space_time_raster_dataset):
         assert line in history_info
 
 
-def test_t_info_map_dataset(space_time_raster_dataset):
+def test_t_info_map_dataset(temporal_data):
     """Raster map metadata is returned correctly."""
-    mapset, session = space_time_raster_dataset
+    mapset, session = temporal_data.mapset, temporal_data.session
     stds_name = "precip_abs1"
     map_name = "prec_1"
     expected = {
         "bottom": 0.0,
-        "cols": 8,
+        "cols": 12,
         "datatype": "CELL",
         "east": 120.0,
         "end_time": "2001-02-01 00:00:00",
@@ -474,7 +468,7 @@ def test_t_info_map_dataset(space_time_raster_dataset):
         "registered_datasets": [
             f"{stds_name}@{mapset}",
         ],
-        "rows": 12,
+        "rows": 8,
         "south": 0.0,
         "start_time": "2001-01-01 00:00:00",
         "temporal_type": "absolute",

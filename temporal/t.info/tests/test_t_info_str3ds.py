@@ -1,13 +1,9 @@
-<<<<<<< HEAD
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Test t.info with space time 3D raster datasets and 3D raster maps
 
 The expected values capture the output of t.info as it is now, so that later
 changes to the interface can be checked against the established behavior.
 """
-=======
-"""Test t.info functionality with raster3D data."""
->>>>>>> 0140fa73c4 (fix title)
 
 import grass.script as gs
 from grass.tools import Tools
@@ -201,7 +197,7 @@ def test_json_format_returns_valid_json(temporal_data):
         "bottom": 0.0,
         "description": "A 3D test",
         "east": 120.0,
-        "end_time": "2001-03-01T00:00:00",
+        "end_time": "2001-03-01 00:00:00",
         "ewres_max": 10.0,
         "ewres_min": 10.0,
         "granularity": "1 month",
@@ -220,7 +216,7 @@ def test_json_format_returns_valid_json(temporal_data):
         "proj": "XY",
         "semantic_type": "mean",
         "south": 0.0,
-        "start_time": "2001-01-01T00:00:00",
+        "start_time": "2001-01-01 00:00:00",
         "tbres_max": 10.0,
         "tbres_min": 10.0,
         "temporal_type": "absolute",
@@ -260,7 +256,7 @@ def test_shell_format_via_option(temporal_data):
 
 
 def test_json_format_vs_shell(temporal_data):
-    """JSON values match shell output, accounting for ISO timestamps."""
+    """JSON values match shell output."""
     tools = Tools(session=temporal_data.session)
     str3ds_id = f"volume_abs1@{temporal_data.mapset}"
 
@@ -270,8 +266,6 @@ def test_json_format_vs_shell(temporal_data):
 
     for dict_key, dict_val in shell_dict.items():
         expected_value = dict_val.strip("'")
-        if dict_key in {"start_time", "end_time"}:
-            expected_value = expected_value.replace(" ", "T")
         assert dict_key in json_dict
         assert str(json_dict[dict_key]) == expected_value
 
@@ -316,7 +310,7 @@ def test_raster3d_json_metadata(temporal_data):
         "datatype": "DCELL",
         "depths": 5,
         "east": 120.0,
-        "end_time": "2001-02-01T00:00:00",
+        "end_time": "2001-02-01 00:00:00",
         "ewres": 10.0,
         "id": f"{map_name}@{temporal_data.mapset}",
         "mapset": temporal_data.mapset,
@@ -330,7 +324,7 @@ def test_raster3d_json_metadata(temporal_data):
         "registered_datasets": [dataset_id],
         "rows": 8,
         "south": 0.0,
-        "start_time": "2001-01-01T00:00:00",
+        "start_time": "2001-01-01 00:00:00",
         "tbres": 10.0,
         "temporal_type": "absolute",
         "top": 50.0,

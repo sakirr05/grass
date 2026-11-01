@@ -209,8 +209,8 @@ def test_json_format_returns_valid_json(temporal_data):
         "number_of_maps": 2,
         "title": "A vector test",
         "description": "A vector test",
-        "start_time": "2001-01-01T00:00:00",
-        "end_time": "2001-03-01T00:00:00",
+        "start_time": "2001-01-01 00:00:00",
+        "end_time": "2001-03-01 00:00:00",
         "faces": 0,
         "points": 40,
         "nodes": 0,
@@ -298,8 +298,6 @@ def test_json_format_vs_shell(temporal_data):
     # Both should produce the same output
     for dict_key, dict_val in shell_dict.items():
         sanitized_value = dict_val.strip("'")
-        if dict_key in {"start_time", "end_time"}:
-            sanitized_value = sanitized_value.replace(" ", "T")
         assert dict_key in json_dict
         assert str(json_dict[dict_key]) == sanitized_value
 
@@ -312,9 +310,9 @@ def test_plain_format_still_works(temporal_data):
     assert "vect_abs1" in info
 
 
-def test_t_info_dh_flags(space_time_vector_dataset):
+def test_t_info_dh_flags(temporal_data):
     """Flags -d and -h work and are included in JSON."""
-    mapset, session = space_time_vector_dataset
+    mapset, session = temporal_data.mapset, temporal_data.session
     stds_id = f"vect_abs1@{mapset}"
     tools = Tools(session=session)
     json_info = tools.t_info(format="json", type="stvds", input=stds_id).json
@@ -332,9 +330,9 @@ def test_t_info_dh_flags(space_time_vector_dataset):
         assert line in history_info
 
 
-def test_t_info_map_dataset(space_time_vector_dataset):
+def test_t_info_map_dataset(temporal_data):
     """Vector map metadata is returned correctly."""
-    mapset, session = space_time_vector_dataset
+    mapset, session = temporal_data.mapset, temporal_data.session
     map_name = "vect_1"
     stds_name = "vect_abs1"
     expected = {
