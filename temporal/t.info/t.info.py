@@ -102,9 +102,7 @@ def main():
     if not dbif.tgis_mapsets:
         msg = _("No temporal database found in available mapsets.")
         if mapset:
-            msg = _(
-                "No temporal database found in requested mapset <%s>."
-            ) % mapset
+            msg = _("No temporal database found in requested mapset <%s>.") % mapset
         gs.fatal(msg)
 
     # Connect once here, otherwise helpers close the connection they open
@@ -157,14 +155,18 @@ def main():
                 datasets[tgis_mapset] = tgis_dataset
         if not datasets:
             gs.fatal(
-                _("Dataset <{n}> of type <{t}> not found in any temporal database on th ecurrent search path.").format(
+                _(
+                    "Dataset <{n}> of type <{t}> not found in any temporal database on th ecurrent search path."
+                ).format(
                     n=name,
                     t=stds_type,
                 ),
             )
         if len(datasets) > 1:
             gs.warning(
-                _("Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from the current mapset if available.").format(
+                _(
+                    "Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from the current mapset if available."
+                ).format(
                     n=name,
                     t=stds_type,
                 )
@@ -175,7 +177,9 @@ def main():
             used_mapset, dataset = next(iter(datasets.items()))
         if len(datasets) > 1:
             gs.warning(
-                _("Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from mapset <{m}>.").format(
+                _(
+                    "Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from mapset <{m}>."
+                ).format(
                     n=name,
                     t=stds_type,
                     m=used_mapset,
