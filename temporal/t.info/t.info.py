@@ -52,6 +52,10 @@
 # % suppress_required: yes
 # %end
 
+# %rules
+# % required: -d, input
+# %end
+
 import json
 
 import grass.script as gs
@@ -70,8 +74,9 @@ def main():
     shellstyle = flags["g"] or format_ == "shell"
     system = flags["d"]
     history = flags["h"]
-
-    mapset = name.split("@", 1)[1] if "@" in name else None
+    qualified = "@" in name
+    mapset = name.split("@", 1)[1] if qualified else None
+    current_mapset = gs.gisenv()["MAPSET"]
 
     if flags["g"]:
         gs.warning(
@@ -102,26 +107,29 @@ def main():
             ) % mapset
         gs.fatal(msg)
 
+    # Connect once here, otherwise helpers close the connection they open
+    dbif.connect()
+
     rows = tgis.get_tgis_metadata(dbif)
 
     if system and not history and format_ != "json":
         if shellstyle:
             print(
                 f"dbmi_python_interface='{dbif.get_dbmi().__name__}'\n"
-                f"dbmi_string='{tgis.get_tgis_database_string()}'\n"
+                f"dbmi_string='{next(iter(dbif.tgis_mapsets.values()))[1]}'\n"
                 f"sql_template_path='{tgis.get_sql_template_path()}'",
             )
             if rows:
                 for row in rows:
-                    print(f"{row[0]}={row[1]}")
+                    print(f"{row[0]}='{row[1]}'")
             return
 
         print(
             " +------------------- Temporal DBMI backend information"
             " ----------------------+\n"
             f" | DBMI Python interface:...... {dbif.get_dbmi().__name__}\n"
-            f" | Temporal database string:... {tgis.get_tgis_database_string()}\n"
-            f" | SQL template path:.......... {tgis.get_sql_template_path()}\n",
+            f" | Temporal database string:... {next(iter(dbif.tgis_mapsets.values()))[1]}\n"
+            f" | SQL template path:.......... {tgis.get_sql_template_path()}",
         )
         if rows:
             for row in rows:
@@ -132,19 +140,47 @@ def main():
         )
         return
 
-    if not system and not name:
-        gs.fatal(_("Please specify %s=") % ("name"))
-
-    dataset = tgis.open_old_stds(name, stds_type, dbif=dbif)
-
-    if not dataset.is_in_db(dbif):
-        gs.fatal(
-            _("Dataset <{n}> of type <{t}> not found in temporal database").format(
-                n=name,
-                t=stds_type,
-            ),
-        )
-
+    if qualified:
+        dataset = tgis.dataset_factory(stds_type, name)
+        if not dataset.is_in_db(dbif):
+            gs.fatal(
+                _("Dataset <{n}> of type <{t}> not found in temporal database").format(
+                    n=name,
+                    t=stds_type,
+                ),
+            )
+    else:
+        datasets = {}
+        for tgis_mapset in dbif.tgis_mapsets:
+            tgis_dataset = tgis.dataset_factory(stds_type, f"{name}@{tgis_mapset}")
+            if tgis_dataset.is_in_db(dbif):
+                datasets[tgis_mapset] = tgis_dataset
+        if not datasets:
+            gs.fatal(
+                _("Dataset <{n}> of type <{t}> not found in any temporal database on th ecurrent search path.").format(
+                    n=name,
+                    t=stds_type,
+                ),
+            )
+        if len(datasets) > 1:
+            gs.warning(
+                _("Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from the current mapset if available.").format(
+                    n=name,
+                    t=stds_type,
+                )
+            )
+        if datasets.get(current_mapset):
+            used_mapset, dataset = current_mapset, datasets[current_mapset]
+        else:
+            used_mapset, dataset = next(iter(datasets.items()))
+        if len(datasets) > 1:
+            gs.warning(
+                _("Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from mapset <{m}>.").format(
+                    n=name,
+                    t=stds_type,
+                    m=used_mapset,
+                )
+            )
     dataset.select(dbif)
 
     if history and stds_type in {"strds", "stvds", "str3ds"} and format_ != "json":
@@ -157,7 +193,7 @@ def main():
         metadata["tgis_db"].update(
             {
                 "dbmi_python_interface": dbif.get_dbmi().__name__,
-                "dbmi_string": tgis.get_tgis_database_string(),
+                "dbmi_string": dbif.tgis_mapsets[dataset.get_mapset()][1],
                 "sql_template_path": tgis.get_sql_template_path(),
             }
         )
