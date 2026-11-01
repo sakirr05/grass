@@ -60,8 +60,6 @@ import json
 
 import grass.script as gs
 
-############################################################################
-
 
 def main():
     # lazy imports
@@ -76,7 +74,6 @@ def main():
     history = flags["h"]
     qualified = "@" in name
     mapset = name.split("@", 1)[1] if qualified else None
-    current_mapset = gs.gisenv()["MAPSET"]
 
     if flags["g"]:
         gs.warning(
@@ -156,25 +153,14 @@ def main():
         if not datasets:
             gs.fatal(
                 _(
-                    "Dataset <{n}> of type <{t}> not found in any temporal database on th ecurrent search path."
+                    "Dataset <{n}> of type <{t}> not found in any temporal database on the current search path."
                 ).format(
                     n=name,
                     t=stds_type,
                 ),
             )
-        if len(datasets) > 1:
-            gs.warning(
-                _(
-                    "Dataset <{n}> of type <{t}> found in multiple temporal databases on the current search path. Using the one from the current mapset if available."
-                ).format(
-                    n=name,
-                    t=stds_type,
-                )
-            )
-        if datasets.get(current_mapset):
-            used_mapset, dataset = current_mapset, datasets[current_mapset]
-        else:
-            used_mapset, dataset = next(iter(datasets.items()))
+        # The current mapset comes first on the search path
+        used_mapset, dataset = next(iter(datasets.items()))
         if len(datasets) > 1:
             gs.warning(
                 _(
